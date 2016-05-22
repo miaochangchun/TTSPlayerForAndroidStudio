@@ -6,8 +6,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.init.HciCloudSysHelper;
@@ -17,11 +20,16 @@ import com.sinovoice.hcicloudsdk.common.tts.TtsInitParam;
 import com.sinovoice.hcicloudsdk.player.TTSCommonPlayer;
 import com.sinovoice.hcicloudsdk.player.TTSPlayerListener;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     private static final int INIT_SUCCESS = 0;
     private EditText inputText;
-    private static final String CAP_KEY = "tts.cloud.wangjing";
+    private String XIAOKUN = "tts.cloud.xiaokun";
+    private String WANGJING = "tts.cloud.wangjing";
+    private String CAP_KEY;
     private static final String TAG = MainActivity.class.getSimpleName();
     private Button playButton;
     private Button pauseButton;
@@ -30,6 +38,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private HciCloudSysHelper mHciCloudSysHelper;
     private TTSPlayer mTtsPlayer;
     private TtsConfig ttsConfig;
+    private Spinner selectVoice;
+    List<String> list = new ArrayList<String>();
+    private ArrayAdapter<String> adapter;
 
     Handler handler = new Handler() {
         @Override
@@ -67,6 +78,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         resumeButton = (Button) findViewById(R.id.resume_button);
         stopButton = (Button) findViewById(R.id.stop_button);
 
+        list.add("王静");
+        list.add("小坤");
+        selectVoice = (Spinner) findViewById(R.id.select_voice);
+        //第二步：为下拉列表定义一个适配器，这里就用到里前面定义的list。
+        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, list);
+        //第三步：为适配器设置下拉列表下拉时的菜单样式。
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        //第四步：将适配器添加到下拉列表上
+        selectVoice.setAdapter(adapter);
+
         mHciCloudSysHelper = HciCloudSysHelper.getInstance();
         mTtsPlayer = new TTSPlayer();
 
@@ -87,6 +108,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 handler.sendMessage(message);
             }
         }).start();
+        /**
+         * 选择发音人
+         */
+        selectVoice.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                switch(position){
+                    case 0:
+                        CAP_KEY = WANGJING;
+                        break;
+                    case 1:
+                        CAP_KEY = XIAOKUN;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                //默认设置为王静
+                CAP_KEY = WANGJING;
+            }
+        });
+
         playButton.setOnClickListener(this);
         pauseButton.setOnClickListener(this);
         resumeButton.setOnClickListener(this);
@@ -119,7 +165,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String dataPath = getBaseContext().getFilesDir().getAbsolutePath().replace("files", "lib");
         ttsInitParam.addParam(TtsInitParam.PARAM_KEY_DATA_PATH, dataPath);
         // 此处演示初始化的能力为tts.cloud.xiaokun, 用户可以根据自己可用的能力进行设置, 另外,此处可以传入多个能力值,并用;隔开
-        ttsInitParam.addParam(TtsInitParam.PARAM_KEY_INIT_CAP_KEYS, CAP_KEY);
+        ttsInitParam.addParam(TtsInitParam.PARAM_KEY_INIT_CAP_KEYS, WANGJING + ";" + XIAOKUN);
         ttsInitParam.addParam(TtsInitParam.PARAM_KEY_FILE_FLAG, "android_so");
 
         mTtsPlayer.init(ttsInitParam.getStringConfig(), new TTSEventProcess());
@@ -135,11 +181,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * 播放器合成函数
      * @param text
      */
-    private void synth(String text) {
+    private void synth(String text, String voiceName) {
         // 配置播放器的属性。包括：音频格式，音库文件，语音风格，语速等等。详情见文档。
         ttsConfig = new TtsConfig();
         // 指定语音合成的能力(云端合成,发言人是XiaoKun)
-        ttsConfig.addParam(TtsConfig.SessionConfig.PARAM_KEY_CAP_KEY, CAP_KEY);
+        ttsConfig.addParam(TtsConfig.SessionConfig.PARAM_KEY_CAP_KEY, voiceName);
         // 音频格式
         ttsConfig.addParam(TtsConfig.BasicConfig.PARAM_KEY_AUDIO_FORMAT, "pcm16k16bit");
         // 设置合成语速
@@ -165,7 +211,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             try {
                 switch (v.getId()) {
                     case R.id.play_button:
-                        synth(inputText.getText().toString());
+                        //播放相关设置
+                        synth(inputText.getText().toString(), CAP_KEY);
                         break;
 
                     case R.id.pause_button:
